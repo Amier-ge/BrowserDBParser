@@ -56,29 +56,30 @@ print("[+] Determined browser type: "+ browser + "\n");sleep(delay)
 print("[+] Connected to the SQLite DB\n");sleep(0.6)
 
 ### Extract relevant info from DB file convert to human readable time and save to file
+### KST (UTC+9) offset in seconds: 9 * 3600 = 32400
 if browser == "Chromium-based":
     browsingfile = "Chromium_Browsing_History.csv"
     downloadfile = "Chromium_Download_History.csv"
-    db_browse = pd.read_sql_query("SELECT datetime(visit_time / 1000000 + (strftime('%s', '1601-01-01T00:00:00')), 'unixepoch') AS visit_time_UTC, (visits.visit_duration / 3600 / 1000000) || ' h ' || strftime('%M m %S s', visits.visit_duration / 1000000 / 86400.0) AS visit_duration, title, urls.url AS url FROM urls LEFT JOIN visits ON urls.id = visits.url ORDER BY visit_time DESC;", sqliteConnection)
-    db_download = pd.read_sql_query("SELECT datetime(start_time / 1000000 + (strftime('%s', '1601-01-01T00:00:00')), 'unixepoch') AS download_start_UTC, total_bytes, received_bytes, mime_type, current_path AS path, tab_url, referrer FROM downloads ORDER BY start_time DESC;", sqliteConnection)
+    db_browse = pd.read_sql_query("SELECT datetime(visit_time / 1000000 + (strftime('%s', '1601-01-01T00:00:00')) + 32400, 'unixepoch') AS visit_time_KST, (visits.visit_duration / 3600 / 1000000) || ' h ' || strftime('%M m %S s', visits.visit_duration / 1000000 / 86400.0) AS visit_duration, title, urls.url AS url FROM urls LEFT JOIN visits ON urls.id = visits.url ORDER BY visit_time DESC;", sqliteConnection)
+    db_download = pd.read_sql_query("SELECT datetime(start_time / 1000000 + (strftime('%s', '1601-01-01T00:00:00')) + 32400, 'unixepoch') AS download_start_KST, total_bytes, received_bytes, mime_type, current_path AS path, tab_url, referrer FROM downloads ORDER BY start_time DESC;", sqliteConnection)
 elif browser == "Mozilla-based":
     browsingfile = "Firefox_Browsing_History.csv"
     downloadfile = "Firefox_Download_History.csv"
-    db_browse = pd.read_sql_query("SELECT datetime(last_visit_date / 1000000 + (strftime('%s', '1970-01-01T00:00:00')), 'unixepoch') AS visit_time_UTC, title, url FROM moz_places ORDER BY last_visit_date DESC;", sqliteConnection)
-    db_download = pd.read_sql_query("SELECT datetime(dateAdded / 1000000 + (strftime('%s', '1970-01-01T00:00:00')), 'unixepoch') AS download_start_UTC, content FROM moz_annos ORDER BY dateAdded DESC;", sqliteConnection)
+    db_browse = pd.read_sql_query("SELECT datetime(last_visit_date / 1000000 + (strftime('%s', '1970-01-01T00:00:00')) + 32400, 'unixepoch') AS visit_time_KST, title, url FROM moz_places ORDER BY last_visit_date DESC;", sqliteConnection)
+    db_download = pd.read_sql_query("SELECT datetime(dateAdded / 1000000 + (strftime('%s', '1970-01-01T00:00:00')) + 32400, 'unixepoch') AS download_start_KST, content FROM moz_annos ORDER BY dateAdded DESC;", sqliteConnection)
 elif browser == "Safari-based":
     browsingfile = "Safari_Browsing_History.csv"
     downloadfile = "N/A"
-    db_browse = pd.read_sql_query("SELECT datetime(visit_time + (strftime('%s', '2001-01-01T00:00:00')), 'unixepoch') AS visit_time_UTC, title, url FROM history_visits INNER JOIN history_items ON history_items.id = history_visits.history_item ORDER BY visit_time DESC;", sqliteConnection)
+    db_browse = pd.read_sql_query("SELECT datetime(visit_time + (strftime('%s', '2001-01-01T00:00:00')) + 32400, 'unixepoch') AS visit_time_KST, title, url FROM history_visits INNER JOIN history_items ON history_items.id = history_visits.history_item ORDER BY visit_time DESC;", sqliteConnection)
 browsingoutput = args_output + browsingfile
 downloadoutput = args_output + downloadfile
 
 ### Save data to CSV files
-print("[+] Converting timestamps to human readable (UTC)");sleep(delay)
-db_browse.to_csv(browsingoutput, index=False)
+print("[+] Converting timestamps to human readable (KST/UTC+9)");sleep(delay)
+db_browse.to_csv(browsingoutput, index=False, encoding='utf-8-sig')
 print("[+] Browsing history saved to: '" + browsingoutput + "'");sleep(delay)
 if browser == "Chromium-based" or browser == "Mozilla-based":
-    db_download.to_csv(downloadoutput, index=False)
+    db_download.to_csv(downloadoutput, index=False, encoding='utf-8-sig')
     print("[+] Download history saved to: '" + downloadoutput + "'");sleep(delay)
 elif browser == "Safari-based":
     print("[!] Download history is not stored in an SQLite DB for this browser, consider reviewing the 'Download.plist' file!");sleep(delay)
